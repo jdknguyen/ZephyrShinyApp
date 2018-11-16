@@ -1,6 +1,9 @@
-library(sunburstR)
-library(wholebrain)
+#library(sunburstR)
+#library(wholebrain)
 
+my_sunburst <- function(dataset, savepath = NULL ){
+  
+ 
 #Set-Up
 
 paxTOallen <- function(paxinos){
@@ -176,4 +179,8 @@ myTable <- data.frame("Region" = rois2, "Path" = paths, "Count" = total_counts$c
 
 myTable2 <- data.frame("AP" = all_dataset_exact_AP$AP)
 
-save(sunburst_plot, myTable, file = "C:/Users/joeyd/Desktop/NIH/PZSA Testing/PoC - Data Isolation/data3.RData")
+if (savepath != NULL) {
+  # save(sunburst_plot, myTable, file = "C:/Users/joeyd/Desktop/NIH/PZSA Testing/PoC - Data Isolation/data3.RData")
+  save(sunburst_plot, myTable, file = savepath)
+  }          
+}
