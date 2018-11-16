@@ -1,0 +1,8 @@
+
+
+my_function <- function (name = "joseph", col = "blue" ) {
+  
+  print(paste("Hi my name is", name, "and my favourite color is", col))
+
+
+}
