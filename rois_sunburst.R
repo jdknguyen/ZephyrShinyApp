@@ -1,14 +1,15 @@
 #wholebrain and sunburstR libraries must be loaded
 
-#----HOW TO USE----
+#----HOW TO USE---- #THIS IS A WORK IN PROGRESS, NOT CLEANED UP
 #code: rois_sunburst(dataset = dataset, rois = rois, savepath = savepath)
 #for dataset, use the wholebrain output containing all cells and their locations (all_dataset is used in the example)
 #for rois, specify ROIs of interest in vector form. The default is CH + BS (essentially the whole brain)
+#for parents, specify TRUE or FALSE. if FALSE, you may only specify one ROI
 #for savepath, specify the full path to the file where you want the output exported.
 
 #the output is an RData file. To see the sunburst plot, load the RData file and run sunburst_plot.
 
-rois_sunburst <- function(dataset, rois = c("CH", "BS"), savepath = NULL){
+rois_sunburst <- function(dataset, rois = c("CH", "BS"), parents = TRUE, savepath = NULL){
   
   
   paxTOallen <- function(paxinos){
@@ -26,28 +27,47 @@ rois_sunburst <- function(dataset, rois = c("CH", "BS"), savepath = NULL){
   #Assemble Nested ROIs List
   
   rois <- init_rois #The new rois list will contain all ROIs of choice plus all parent regions. This is necessary for the sunburst plot to work properly. It will also include all child regions (useful but not necessary)
-  
-  for(i in 1:length(init_rois)) #This code creates the new rois list by iterating through the ROIs of choice and adding all parent regions to the list until "grey" is reached, and all child regions until NA is reached
-  {
-    new_parent_addition <- wholebrain::get.acronym.parent(init_rois[i]) #parent regions - straightforward because it is always linear from child to parent to parent etc.
-    while(new_parent_addition != "grey") #the linear path continues from the child region until it hits "grey", the last parent region (except for root)
+  if(parents == TRUE){
+    for(i in 1:length(init_rois)) #This code creates the new rois list by iterating through the ROIs of choice and adding all parent regions to the list until "grey" is reached, and all child regions until NA is reached
     {
-      rois <- c(rois, new_parent_addition)
-      new_parent_addition <- wholebrain::get.acronym.parent(new_parent_addition)
-    }
-    
-    new_child_additions <- wholebrain::get.acronym.child(init_rois[i]) #child regions - more complicated because there are usually multiple child regions
-    next_level_additions <- c() #this is a placeholder list to temporarily hold region names
-    while(length(new_child_additions) > 0) #as long as the list of new child regions exists, they will be added to rois
-    {
-      for(j in 1:length(new_child_additions)) #cycles through list of child regions
+      new_parent_addition <- wholebrain::get.acronym.parent(init_rois[i]) #parent regions - straightforward because it is always linear from child to parent to parent etc.
+      while(new_parent_addition != "grey") #the linear path continues from the child region until it hits "grey", the last parent region (except for root)
       {
-        next_level_additions <- c(next_level_additions, wholebrain::get.acronym.child(new_child_additions[j])) #temporary list of new child regions
+        rois <- c(rois, new_parent_addition)
+        new_parent_addition <- wholebrain::get.acronym.parent(new_parent_addition)
       }
-      rois <- c(rois, new_child_additions) #add data to list
-      new_child_additions <- next_level_additions
-      next_level_additions <- c() #resets the list for the next loop iteration
-      new_child_additions <- new_child_additions[is.na(new_child_additions) == FALSE] #if you take the child region of a region with no children, it produces NA. This code gets rid of all NAs from the list
+      
+      new_child_additions <- wholebrain::get.acronym.child(init_rois[i]) #child regions - more complicated because there are usually multiple child regions
+      next_level_additions <- c() #this is a placeholder list to temporarily hold region names
+      while(length(new_child_additions) > 0) #as long as the list of new child regions exists, they will be added to rois
+      {
+        for(j in 1:length(new_child_additions)) #cycles through list of child regions
+        {
+          next_level_additions <- c(next_level_additions, wholebrain::get.acronym.child(new_child_additions[j])) #temporary list of new child regions
+        }
+        rois <- c(rois, new_child_additions) #add data to list
+        new_child_additions <- next_level_additions
+        next_level_additions <- c() #resets the list for the next loop iteration
+        new_child_additions <- new_child_additions[is.na(new_child_additions) == FALSE] #if you take the child region of a region with no children, it produces NA. This code gets rid of all NAs from the list
+      }
+    }
+  }
+  if(parents == FALSE){
+    for(i in 1:length(init_rois)) #This code creates the new rois list by iterating through the ROIs of choice and adding all parent regions to the list until "grey" is reached, and all child regions until NA is reached
+    {
+      new_child_additions <- wholebrain::get.acronym.child(init_rois[i]) #child regions - more complicated because there are usually multiple child regions
+      next_level_additions <- c() #this is a placeholder list to temporarily hold region names
+      while(length(new_child_additions) > 0) #as long as the list of new child regions exists, they will be added to rois
+      {
+        for(j in 1:length(new_child_additions)) #cycles through list of child regions
+        {
+          next_level_additions <- c(next_level_additions, wholebrain::get.acronym.child(new_child_additions[j])) #temporary list of new child regions
+        }
+        rois <- c(rois, new_child_additions) #add data to list
+        new_child_additions <- next_level_additions
+        next_level_additions <- c() #resets the list for the next loop iteration
+        new_child_additions <- new_child_additions[is.na(new_child_additions) == FALSE] #if you take the child region of a region with no children, it produces NA. This code gets rid of all NAs from the list
+      }
     }
   }
   
@@ -58,26 +78,55 @@ rois_sunburst <- function(dataset, rois = c("CH", "BS"), savepath = NULL){
   
   paths <- c() #In order for the plot to know the nesting pattern, each region must contain a path to the outermost region "grey"
   
-  for(i in 1:length(rois)) #This code takes each item in rois and adds its path to a list of paths
-  {
-    most_recent <- wholebrain::get.acronym.parent(rois[i]) #this variable stores the newest addition of the path
-    most_recent_path <- rois[i] #this variable stores the entire path
-    if(grepl("-", most_recent_path)){
-      most_recent_path <- gsub("-", "_", most_recent_path)
-    }
-    if(rois[i] != "grey") #Applies to all rois except for "grey" itself
+  if(parents == TRUE){
+    for(i in 1:length(rois)) #This code takes each item in rois and adds its path to a list of paths
     {
-      while(most_recent != "grey" & most_recent_path != "grey") # True if region and parent region are NOT grey. This code creates the path and adds it to the list of paths
-      {
-        next_path <- wholebrain::get.acronym.parent(most_recent)
-        if(grepl("-", most_recent)){
-          most_recent <- gsub("-", "_", most_recent)
-        }
-        most_recent_path <- paste0(most_recent, "-", most_recent_path)
-        most_recent <- next_path
+      most_recent <- wholebrain::get.acronym.parent(rois[i]) #this variable stores the newest addition of the path
+      most_recent_path <- rois[i] #this variable stores the entire path
+      if(grepl("-", most_recent_path)){
+        most_recent_path <- gsub("-", "_", most_recent_path)
       }
-      # most_recent_path <- paste0("grey-", most_recent_path)
-      paths <- c(paths, most_recent_path)
+      if(rois[i] != "grey") #Applies to all rois except for "grey" itself
+      {
+        while(most_recent != "grey" & most_recent_path != "grey") # True if region and parent region are NOT grey. This code creates the path and adds it to the list of paths
+        {
+          next_path <- wholebrain::get.acronym.parent(most_recent)
+          if(grepl("-", most_recent)){
+            most_recent <- gsub("-", "_", most_recent)
+          }
+          most_recent_path <- paste0(most_recent, "-", most_recent_path)
+          most_recent <- next_path
+        }
+        # most_recent_path <- paste0("grey-", most_recent_path)
+        paths <- c(paths, most_recent_path)
+      }
+    }
+  }
+  
+  if(parents == FALSE){
+    roi_parent <- wholebrain::get.acronym.parent(rois[1])
+    
+    for(i in 1:length(rois)) #This code takes each item in rois and adds its path to a list of paths
+    {
+      most_recent <- wholebrain::get.acronym.parent(rois[i]) #this variable stores the newest addition of the path
+      most_recent_path <- rois[i] #this variable stores the entire path
+      if(grepl("-", most_recent_path)){
+        most_recent_path <- gsub("-", "_", most_recent_path)
+      }
+      if(rois[i] != roi_parent) #Applies to all rois except for "grey" itself
+      {
+        while(most_recent != roi_parent & most_recent_path != roi_parent) # True if region and parent region are NOT grey. This code creates the path and adds it to the list of paths
+        {
+          next_path <- wholebrain::get.acronym.parent(most_recent)
+          if(grepl("-", most_recent)){
+            most_recent <- gsub("-", "_", most_recent)
+          }
+          most_recent_path <- paste0(most_recent, "-", most_recent_path)
+          most_recent <- next_path
+        }
+        # most_recent_path <- paste0("grey-", most_recent_path)
+        paths <- c(paths, most_recent_path)
+      }
     }
   }
   
@@ -139,7 +188,7 @@ rois_sunburst <- function(dataset, rois = c("CH", "BS"), savepath = NULL){
   rois2 <- c(rois2, "end")
   
   
-  #To make the plots, run the code below
+  #To make and save the plots, run the code below
   
   sunburst_wholebrain <- structure(list(paths, counts), Names = c("paths", "counts"), class = "data.frame", row.names = c(NA, -25L))
   sunburst_plot <- sunburstR::sunburst(sunburst_wholebrain, count = TRUE, percent = TRUE, colors = list(range = colorv, domain = rois2), legend = FALSE, breadcrumb = list(w = 65, h = 30, r = 100, s = 0))
@@ -147,7 +196,7 @@ rois_sunburst <- function(dataset, rois = c("CH", "BS"), savepath = NULL){
   if(is.null(savepath) == FALSE) {
     file = paste0(savepath, "/sunburst.RData")
     save(sunburst_plot, file = file)
-  }          
+  }
 }
 
-rois_sunburst(dataset = all_dataset, c("BS"), savepath = "C:/Users/joeyd/Desktop/NIH/PZSA Testing/PoC - Sunburst ROIs Function")
+rois_sunburst(dataset = all_dataset, rois = "BS", parents = TRUE, savepath = "C:/Users/joeyd/Desktop/NIH/PZSA Testing/PoC - Sunburst ROIs Function")
