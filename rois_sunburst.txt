@@ -1,0 +1,39 @@
+rois_sunburst {ez_brain}
+R Documentataion
+
+Brain Region Sunburst Plots
+
+Description
+
+Sunburst plots are an interactive way to hierarchically visualize data, including whole brain cell counts. This function is designed for use with the data table produced via [what function?]. The function outputs an RData file (sunburst.R), containing an object (sunburst_plot) that can be called to display the plot.
+
+Usage
+
+rois_sunburst(dataset = NULL, rois = c("CH", "BS"), parents = TRUE, savepath = NULL)
+
+Arguments
+
+dataset
+data in list form; recommended to use "all_dataset" output by [what function?]. Used to acquire count data to be displayed.
+
+rois
+string vector of regions of interest to be plotted. If not specified, all cells in the brain will be displayed.
+
+parents
+logical to include parent regions of your region of interest. If TRUE, only one region of interest may be specified.
+
+savepath
+string to specify the full save path for the RData output.
+
+Examples
+
+library(ez_brain)
+library(sunburstR)
+library(wholebrain)
+
+rois_sunburst(dataset = all_dataset, rois = "P-mot", parents = FALSE, savepath = savepath)
+rois_sunburst(dataset = all_dataset, rois = c("P-mot", "MB", "Isocortex"), parents = TRUE, savepath = savepath)
+
+Dependencies (not sure whether to include)
+
+ez_brain, wholebrain, sunburstR
